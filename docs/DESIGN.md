@@ -168,6 +168,12 @@ The following are **not** part of v1:
 
 v1 is an app shell only (no marketing hero). Phone-first layouts.
 
+![alt text](<Screenshot 2026-11-11 at 1.43.52 PM.png>)
+
+![alt text](<Screenshot 2026-11-11 at 1.44.44 PM.png>)
+
+![alt text](<Screenshot 2026-11-11 at 1.45.16 PM.png>)
+
 ### Days list (home)
 - Shows a list of Day entries denoted by the dates as the titles. Clicking into each date opens the Day Entry for the date.
 - Shows a "+" icon to create a new day entry. Cannot create multiple day entried for the same date.
