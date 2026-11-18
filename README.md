@@ -2,7 +2,7 @@
 
 DayTracker is a productivity mobile app for logging how you spend your time each day. For each entry you record a start time, end time, a description of what you did, and an optional category tag.
 
-![alt text](Screenshot 2026-11-11 at 1.50.23 PM.png)
+![alt text](<docs/Screenshot 2026-11-11 at 1.50.23 PM.png>)
 
 ## v1 scope
 
