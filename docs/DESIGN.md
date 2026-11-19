@@ -1,8 +1,8 @@
-# DayTracker v1 Design Document
+# DayTrack v1 Design Document
 
 ## 1. Overview
 
-DayTracker is a productivity mobile app for logging how time was spent each day. Users create entries with a start time, end time, and a description of the activity (or activities) performed in that duration, and may optionally tag each entry with a category.
+DayTrack is a productivity mobile app for logging how time was spent each day. Users create entries with a start time, end time, and a description of the activity (or activities) performed in that duration, and may optionally tag each entry with a category.
 
 **v1 goals**
 
@@ -43,20 +43,19 @@ Requirements use **must** (required for release) and **should** (expected unless
 ### 3.1 Time entries
 
 
-| ID  | Requirement                                                                                                                    |
-| --- | ------------------------------------------------------------------------------------------------------------------------------ |
-| E0  | The app **must** show a list of all the day entries and clicking each should go into that day's time entries.                  |
-| E1  | The app **must** allow creating an entry with start time, end time, description, and optional category.                        |
-| E2  | The app **must** allow editing all fields of an existing entry.                                                                |
-| E3  | The app **must** allow deleting an entry.                                                                                      |
-| E4  | The app **must** show entries for a selected calendar day; the default day **must** be today.                                  |
-| E5  | The app **must** reject save when end time is not after start time.                                                            |
-| E6  | Entries **must** be same-day only; multi-day spans are not supported. time must be withing the same 24 hours day (00:00-23:59) |
-| E7  | Overlapping entries on the same day **must** be allowed; the app **must not** auto-merge or block overlaps.                    |
-| E8  | Description **must** be required and non-empty after trim.                                                                     |
-| E9 | Entries for a day **should** be displayed sorted by start time ascending.                                                      |
-| E10 | Start time should have default vlue of the end time of the previous time entry(if none, current time is default). End time default 30mins from start                                                     |
-
+| ID  | Requirement                                                                                                                                          |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E0  | The app **must** show a list of all the day entries and clicking each should go into that day's time entries.                                        |
+| E1  | The app **must** allow creating an entry with start time, end time, description, and optional category.                                              |
+| E2  | The app **must** allow editing all fields of an existing entry.                                                                                      |
+| E3  | The app **must** allow deleting an entry.                                                                                                            |
+| E4  | The app **must** show entries for a selected calendar day; the default day **must** be today.                                                        |
+| E5  | The app **must** reject save when end time is not after start time.                                                                                  |
+| E6  | Entries **must** be same-day only; multi-day spans are not supported. time must be withing the same 24 hours day (00:00-23:59)                       |
+| E7  | Overlapping entries on the same day **must** be allowed; the app **must not** auto-merge or block overlaps.                                          |
+| E8  | Description **must** be required and non-empty after trim.                                                                                           |
+| E9 | Entries for a day **should** be displayed sorted by start time ascending.                                                                            |
+| E10 | Start time should have default vlue of the end time of the previous time entry(if none, current time is default). End time default 30mins from start |
 
 
 
@@ -107,6 +106,8 @@ The following are **not** part of v1:
 - Reminders or notifications
 - home-screen widgets
 - Multiple categories per entry, nested categories
+
+
 
 ### v2+ candidates
 
@@ -168,15 +169,18 @@ The following are **not** part of v1:
 
 v1 is an app shell only (no marketing hero). Phone-first layouts.
 
-![alt text](<Screenshot 2026-11-11 at 1.43.52 PM.png>)
+![alt text](Screenshot 2026-11-11 at 1.43.52 PM.png)
 
-![alt text](<Screenshot 2026-11-11 at 1.44.44 PM.png>)
+![alt text](Screenshot 2026-11-11 at 1.44.44 PM.png)
 
-![alt text](<Screenshot 2026-11-11 at 1.45.16 PM.png>)
+![alt text](Screenshot 2026-11-11 at 1.45.16 PM.png)
 
 ### Days list (home)
+
 - Shows a list of Day entries denoted by the dates as the titles. Clicking into each date opens the Day Entry for the date.
 - Shows a "+" icon to create a new day entry. Cannot create multiple day entried for the same date.
+
+
 
 ### Day Entry
 
@@ -226,27 +230,27 @@ Use this checklist to mark v1 “done.”
 
 **Time entries**
 
-- [ ] Create entry with start, end, description, optional category
-- [ ] Edit and save changes to an existing entry
-- [ ] Delete an entry
-- [ ] Default day is today; entries for that day are listed
-- [ ] Cannot save when end ≤ start
-- [ ] Cannot create multi-day spans
-- [ ] Overlapping entries on the same day are allowed
-- [ ] Empty description is rejected
-- [ ] Entries sorted by start time on the day list
+- [x] Create entry with start, end, description, optional category
+- [x] Edit and save changes to an existing entry
+- [x] Delete an entry
+- [x] Default day is today; entries for that day are listed
+- [x] Cannot save when end ≤ start
+- [x] Cannot create multi-day spans
+- [x] Overlapping entries on the same day are allowed
+- [x] Empty description is rejected
+- [x] Entries sorted by start time on the day list
 
 **Categories**
 
 - [ ] Create, rename, and delete categories
 - [ ] Duplicate category names (case-insensitive) rejected
-- [ ] Entry has zero or one category
-- [ ] Uncategorized entries allowed
+- [x] Entry has zero or one category
+- [x] Uncategorized entries allowed
 - [ ] Deleting a category does not delete entries; those entries become uncategorized
 
 **Day navigation & persistence**
 
-- [ ] Navigate to other days; empty state shown when needed
+- [x] Navigate to other days; empty state shown when needed
 - [ ] Data survives app restart
 - [ ] CRUD works with airplane mode / no network
 
