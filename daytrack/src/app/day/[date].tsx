@@ -103,13 +103,6 @@ export default function DayScreen() {
 
   const listHeader = (
     <View style={styles.headerBlock}>
-      <Link href="/" asChild>
-        <Pressable style={styles.backRow} accessibilityRole="button">
-          <AppIcon name="chevron-left" size={18} color={colors.ink} />
-          <Text style={styles.backText}>All days</Text>
-        </Pressable>
-      </Link>
-
       <View style={styles.titleRow}>
         <View style={styles.titleCopy}>
           <Text style={styles.weekday}>{weekdayLong(date)}</Text>
@@ -164,15 +157,23 @@ export default function DayScreen() {
   return (
     <View style={styles.screen}>
       <Stack.Screen options={{ title: weekdayLong(date) }} />
+      {/* Sticky back control — stays put while the day content scrolls */}
+      <View style={[styles.stickyBack, { paddingTop: insets.top + spacing.md }]}>
+        {/* dismissTo pops back to Home instead of pushing another Home onto the stack */}
+        <Link dismissTo href="/" asChild>
+          <Pressable style={styles.backRow} accessibilityRole="button">
+            <AppIcon name="chevron-left" size={18} color={colors.ink} />
+            <Text style={styles.backText}>All days</Text>
+          </Pressable>
+        </Link>
+      </View>
       <FlatList
         data={entries}
         keyExtractor={(item) => item.id}
-        contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + spacing.md,
             paddingBottom: 120,
             flexGrow: 1,
           },
@@ -213,6 +214,12 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screen,
+  },
+  stickyBack: {
+    paddingHorizontal: spacing.screen,
+    paddingBottom: spacing.md,
+    backgroundColor: colors.background,
+    zIndex: 1,
   },
   headerBlock: {
     gap: spacing.lg,

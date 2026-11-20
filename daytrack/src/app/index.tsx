@@ -6,8 +6,9 @@
  * (compose=1).
  */
 
-import { FlatList, StyleSheet, Text, View } from "react-native";
-import { router, Stack } from "expo-router";
+import { useCallback } from "react";
+import { BackHandler, FlatList, StyleSheet, Text, View } from "react-native";
+import { router, Stack, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DaySummaryCard } from "@/components/day-summary-card";
@@ -22,20 +23,34 @@ export default function HomeScreen() {
   const summaries = getRecentDaySummaries(7);
   const today = todayKey();
 
+  // Android hardware back on Home should leave the app, not replay day history
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        BackHandler.exitApp();
+        return true;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, []),
+  );
+
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ title: "daytrack" }} />
+      <Stack.Screen options={{ title: "DayTrack" }} />
+      {/* Sticky brand title — stays put while recent days scroll */}
+      <View style={[styles.stickyBrand, { paddingTop: insets.top + spacing.lg }]}>
+        <Text style={styles.brand}>DayTrack</Text>
+      </View>
       <FlatList
         data={summaries}
         keyExtractor={(item) => item.date}
-        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + spacing.lg, paddingBottom: 120 },
+          { paddingBottom: 120 },
         ]}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.brand}>daytrack</Text>
             <Text style={styles.tagline}>A little more intentional, every day.</Text>
             <Text style={styles.title}>Your days</Text>
             <Text style={styles.subtitle}>A record of where your time goes.</Text>
@@ -71,6 +86,12 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screen,
+  },
+  stickyBrand: {
+    paddingHorizontal: spacing.screen,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.background,
+    zIndex: 1,
   },
   header: {
     gap: spacing.xs,
