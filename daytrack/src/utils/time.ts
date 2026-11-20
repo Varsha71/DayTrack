@@ -36,3 +36,15 @@ export function nowTimeString(date = new Date()): string {
 export function addMinutesToTime(time: string, minutesToAdd: number): string {
   return minutesToTime(parseTimeToMinutes(time) + minutesToAdd);
 }
+
+/** Builds a local Date for a YYYY-MM-DD key and HH:mm time. */
+export function timeStringToDate(dateKey: string, time: string): Date {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+}
+
+/** Formats a Date as HH:mm. */
+export function dateToTimeString(date: Date): string {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}

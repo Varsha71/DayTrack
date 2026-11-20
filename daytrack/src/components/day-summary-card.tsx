@@ -15,7 +15,6 @@ import type { DaySummary } from "@/types/models";
 import {
   dayLabel,
   dayNumber,
-  monthLong,
   todayKey,
   weekdayShort,
 } from "@/utils/date";
@@ -24,12 +23,10 @@ import { formatDuration } from "@/utils/time";
 type DaySummaryCardProps = {
   /** Totals for one calendar day (date, minutes, activity count). */
   summary: DaySummary;
-  /** When true, show the month name next to the title (used on the first/top card). */
-  showMonth?: boolean;
 };
 
 /** Renders a tappable day summary card for the Home screen. */
-export function DaySummaryCard({ summary, showMonth }: DaySummaryCardProps) {
+export function DaySummaryCard({ summary }: DaySummaryCardProps) {
   const isToday = summary.date === todayKey();
   const label = dayLabel(summary.date);
   // Link asChild (Slot) rejects style arrays on web SSR — flatten first.
@@ -55,14 +52,7 @@ export function DaySummaryCard({ summary, showMonth }: DaySummaryCardProps) {
         </View>
 
         <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, isToday && styles.textOnDark]}>{label}</Text>
-            {showMonth ? (
-              <Text style={[styles.month, isToday && styles.textOnDarkMuted]}>
-                {monthLong(summary.date)}
-              </Text>
-            ) : null}
-          </View>
+          <Text style={[styles.title, isToday && styles.textOnDark]}>{label}</Text>
           {/* e.g. "4h 45m  ·  6 activities" */}
           <Text style={[styles.meta, isToday && styles.textOnDarkMuted]}>
             {formatDuration(summary.totalMinutes)}
@@ -124,19 +114,9 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
   title: {
     ...typography.bodyStrong,
     color: colors.ink,
-  },
-  month: {
-    ...typography.caption,
-    color: colors.inkSoft,
   },
   meta: {
     ...typography.meta,

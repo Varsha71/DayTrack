@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import DateTimePicker from "@expo/ui/community/datetime-picker";
 
 import { AppIcon } from "@/components/app-icon";
 import { colors, radius, spacing, typography, type RowColor } from "@/theme";
@@ -21,10 +22,12 @@ import type { Category, Entry } from "@/types/models";
 import type { EntryInput } from "@/data/store";
 import {
   addMinutesToTime,
+  dateToTimeString,
   entryDurationMinutes,
   formatDuration,
   nowTimeString,
   parseTimeToMinutes,
+  timeStringToDate,
 } from "@/utils/time";
 
 /** Swatch options shown in the "Row color" picker. */
@@ -81,19 +84,8 @@ export function ActivityForm({
     if (!endTime) return "Finish when you're done.";
     const minutes = entryDurationMinutes(startTime, endTime);
     if (minutes == null) return "End time must be after start.";
-    return `Starts now · ${formatDuration(minutes)}.`;
+    return `Duration · ${formatDuration(minutes)}.`;
   }, [startTime, endTime]);
-
-  /** Adjusts start or end by ±15 minutes via the stepper buttons. */
-  const bumpTime = (field: "start" | "end", deltaMinutes: number) => {
-    if (field === "start") {
-      setStartTime((current) => addMinutesToTime(current, deltaMinutes));
-      return;
-    }
-    setEndTime((current) =>
-      addMinutesToTime(current ?? addMinutesToTime(startTime, 30), deltaMinutes),
-    );
-  };
 
   /** Validates required fields, then hands data to the parent via onSave. */
   const handleSave = () => {
@@ -141,20 +133,20 @@ export function ActivityForm({
         </View>
       </View>
 
-      {/* Start / end steppers; end can show "Set later" when cleared */}
+      {/*  Tappable fields open a native time picker. End can show "Set later" when cleared */}
       <View style={styles.timeRow}>
         <TimeField
           label="Start time"
-          value={startTime}
-          onMinus={() => bumpTime("start", -15)}
-          onPlus={() => bumpTime("start", 15)}
+          dateKey={date}
+          time={startTime}
+          onChange={setStartTime}
         />
         <TimeField
           label="End time"
-          value={endTime ?? "Set later"}
-          muted={!endTime}
-          onMinus={() => bumpTime("end", -15)}
-          onPlus={() => bumpTime("end", 15)}
+          dateKey={date}
+          time={endTime}
+          placeholder="Set later"
+          onChange={setEndTime}
         />
       </View>
 
@@ -233,35 +225,81 @@ export function ActivityForm({
   );
 }
 
-/** Compact start/end control with − / + steppers. */
+/**
+ * Tappable time field that opens a native picker.
+ * Android uses a dialog; iOS shows a spinner under the field until dismissed.
+ */
 function TimeField({
   label,
-  value,
-  muted,
-  onMinus,
-  onPlus,
+  dateKey,
+  time,
+  placeholder,
+  onChange,
 }: {
   label: string;
-  value: string;
-  muted?: boolean;
-  onMinus: () => void;
-  onPlus: () => void;
+  dateKey: string;
+  time: string | null;
+  placeholder?: string;
+  onChange: (time: string) => void;
 }) {
+  const [showPicker, setShowPicker] = useState(false);
+  const fallbackTime = time ?? addMinutesToTime(nowTimeString(), 0);
+  const pickerValue = timeStringToDate(dateKey, fallbackTime);
+  const displayValue = time ?? placeholder ?? "Set later";
+  const muted = time == null;
+
+  const applyPickedTime = (selected: Date) => {
+    onChange(dateToTimeString(selected));
+    if (process.env.EXPO_OS === "android") {
+      setShowPicker(false);
+    }
+  };
+
   return (
     <View style={styles.timeField}>
       <Text style={styles.timeLabel}>{label}</Text>
-      <View style={styles.timeControls}>
-        <Pressable onPress={onMinus} hitSlop={8} style={styles.stepButton}>
-          <Text style={styles.stepText}>−</Text>
-        </Pressable>
-        <View style={styles.timeValueWrap}>
-          <AppIcon name="clock" size={14} color={colors.inkMuted} />
-          <Text style={[styles.timeValue, muted && styles.timeValueMuted]}>{value}</Text>
-        </View>
-        <Pressable onPress={onPlus} hitSlop={8} style={styles.stepButton}>
-          <Text style={styles.stepText}>+</Text>
-        </Pressable>
-      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}, ${displayValue}`}
+        onPress={() => setShowPicker((open) => !open)}
+        style={styles.timeValueButton}
+      >
+        <AppIcon name="clock" size={14} color={colors.inkMuted} />
+        <Text style={[styles.timeValue, muted && styles.timeValueMuted]}>
+          {displayValue}
+        </Text>
+      </Pressable>
+
+      {showPicker && process.env.EXPO_OS === "web" ? (
+        <TextInput
+          value={fallbackTime}
+          onChangeText={(text) => {
+            if (/^\d{2}:\d{2}$/.test(text)) {
+              onChange(text);
+            }
+          }}
+          placeholder="HH:mm"
+          placeholderTextColor={colors.inkSoft}
+          style={styles.webTimeInput}
+          autoFocus
+          onBlur={() => setShowPicker(false)}
+        />
+      ) : null}
+
+      {showPicker && process.env.EXPO_OS !== "web" ? (
+        <DateTimePicker
+          mode="time"
+          value={pickerValue}
+          is24Hour
+          display={process.env.EXPO_OS === "ios" ? "spinner" : "default"}
+          presentation="dialog"
+          accentColor={colors.primary}
+          onValueChange={(_event, selectedDate) => {
+            applyPickedTime(selectedDate);
+          }}
+          onDismiss={() => setShowPicker(false)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -341,15 +379,11 @@ const styles = StyleSheet.create({
     ...typography.tiny,
     color: colors.inkMuted,
   },
-  timeControls: {
+  timeValueButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-  timeValueWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+    gap: spacing.sm,
+    minHeight: 28,
   },
   timeValue: {
     ...typography.bodyStrong,
@@ -358,18 +392,15 @@ const styles = StyleSheet.create({
   timeValueMuted: {
     color: colors.inkSoft,
   },
-  stepButton: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceMuted,
-  },
-  stepText: {
-    fontSize: 16,
+  webTimeInput: {
+    marginTop: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    ...typography.body,
     color: colors.ink,
-    fontWeight: "600",
   },
   helper: {
     ...typography.caption,

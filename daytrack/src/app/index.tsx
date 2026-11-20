@@ -14,7 +14,7 @@ import { DaySummaryCard } from "@/components/day-summary-card";
 import { Fab } from "@/components/fab";
 import { useStore } from "@/data/store";
 import { colors, spacing, typography } from "@/theme";
-import { todayKey } from "@/utils/date";
+import { monthLong, todayKey } from "@/utils/date";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -41,13 +41,11 @@ export default function HomeScreen() {
             <Text style={styles.subtitle}>A record of where your time goes.</Text>
             <View style={styles.sectionRow}>
               <Text style={styles.section}>Recent days</Text>
+              <Text style={styles.month}>{monthLong(today)}</Text>
             </View>
           </View>
         }
-        renderItem={({ item, index }) => (
-          // showMonth only on the first card (matches the mock layout)
-          <DaySummaryCard summary={item} showMonth={index === 0} />
-        )}
+        renderItem={({ item }) => <DaySummaryCard summary={item} />}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListFooterComponent={
           <Text style={styles.footer}>Make time visible.</Text>
@@ -97,10 +95,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: spacing.sm,
   },
   section: {
     ...typography.section,
+    color: colors.inkSoft,
+  },
+  month: {
+    ...typography.caption,
     color: colors.inkSoft,
   },
   separator: {
