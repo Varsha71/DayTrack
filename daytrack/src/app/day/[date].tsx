@@ -5,11 +5,12 @@
  * a param (e.g. /day/2026-11-18 → params.date === "2026-11-18").
  *
  * Shows the date header, summary bar, activity list (or empty state), and an
- * inline create/edit form when compose mode is open. FAB opens create mode;
- * Home can also deep-link here with ?compose=1 to start a new entry.
+ * inline create/edit form when compose mode is open. Create opens above the
+ * list. Edit replaces that activity's card in-place and scrolls to it. FAB
+ * opens create mode. Home can also deep-link here with ?compose=1.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -43,6 +44,8 @@ type ComposeMode =
 
 export default function DayScreen() {
   const insets = useSafeAreaInsets();
+  // Handle so we can programmatically scroll when create/edit opens.
+  const listRef = useRef<FlatList<Entry>>(null);
   // date comes from the [date] path segment; compose is an optional query flag
   const params = useLocalSearchParams<{ date: string; compose?: string }>();
   const dateParam = Array.isArray(params.date) ? params.date[0] : params.date;
@@ -68,10 +71,16 @@ export default function DayScreen() {
   const entries = getEntriesForDate(date);
   const summary = getDaySummary(date);
   const isToday = date === todayKey();
+  // Entry being edited — passed into ActivityForm as initial values.
   const editingEntry =
     compose.type === "edit"
       ? entries.find((entry) => entry.id === compose.entryId) ?? null
       : null;
+  // FlatList index of that entry — used by scrollToIndex after edit opens.
+  const editingIndex =
+    compose.type === "edit"
+      ? entries.findIndex((entry) => entry.id === compose.entryId)
+      : -1;
 
   // New entries default to starting where the previous one ended (design E10).
   const defaultStartTime = useMemo(() => {
@@ -80,10 +89,29 @@ export default function DayScreen() {
     return undefined;
   }, [entries]);
 
-  const openCreate = () => setCompose({ type: "create" });
+  // Create form lives in the list header. Scroll to top so it isn't off-screen.
+  const openCreate = () => {
+    setCompose({ type: "create" });
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
   const openEdit = (entry: Entry) =>
     setCompose({ type: "edit", entryId: entry.id });
   const closeCompose = () => setCompose({ type: "closed" });
+
+  // Edit swaps the card for a taller form, wait one frame(so the form has laid out), 
+  // then scroll that row into view so the form isn't left above/below the current scroll position.
+  useEffect(() => {
+    if (compose.type !== "edit" || editingIndex < 0) return;
+    const frame = requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({
+        index: editingIndex,
+        animated: true,
+        // 0 = align the row near the top of the visible list area
+        viewPosition: 0,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [compose, editingIndex]);
 
   const handleSave = (input: EntryInput) => {
     if (compose.type === "edit") {
@@ -100,6 +128,29 @@ export default function DayScreen() {
       closeCompose();
     }
   };
+
+  // Shared UI for create (header) and edit (inline row) so labels stay in sync.
+  const composeForm = (mode: "create" | "edit") => (
+    <View style={styles.composeSection}>
+      <View style={styles.sectionRow}>
+        <Text style={styles.section}>
+          {mode === "edit" ? "Edit entry" : "New entry"}
+        </Text>
+        <Text style={styles.sectionMeta}>
+          {mode === "edit" ? "Editing" : "Creating"}
+        </Text>
+      </View>
+      <ActivityForm
+        date={date}
+        categories={categories}
+        initial={mode === "edit" ? editingEntry : null}
+        defaultStartTime={defaultStartTime}
+        onSave={handleSave}
+        onCancel={closeCompose}
+        onDelete={mode === "edit" ? handleDelete : undefined}
+      />
+    </View>
+  );
 
   const listHeader = (
     <View style={styles.headerBlock}>
@@ -120,28 +171,8 @@ export default function DayScreen() {
         activityCount={summary.activityCount}
       />
 
-      {/* Inline new/edit form (matches the lavender "New activity" mock) */}
-      {compose.type !== "closed" ? (
-        <View style={styles.composeSection}>
-          <View style={styles.sectionRow}>
-            <Text style={styles.section}>
-              {compose.type === "edit" ? "Edit entry" : "New entry"}
-            </Text>
-            <Text style={styles.sectionMeta}>
-              {compose.type === "edit" ? "Editing" : "Creating"}
-            </Text>
-          </View>
-          <ActivityForm
-            date={date}
-            categories={categories}
-            initial={editingEntry}
-            defaultStartTime={defaultStartTime}
-            onSave={handleSave}
-            onCancel={closeCompose}
-            onDelete={compose.type === "edit" ? handleDelete : undefined}
-          />
-        </View>
-      ) : null}
+      {/* Only "new entry" opens in the header. Edit is rendered in renderItem */}
+      {compose.type === "create" ? composeForm("create") : null}
 
       {entries.length > 0 ? (
         <View style={styles.sectionRow}>
@@ -168,6 +199,7 @@ export default function DayScreen() {
         </Link>
       </View>
       <FlatList
+        ref={listRef}
         data={entries}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
@@ -183,13 +215,28 @@ export default function DayScreen() {
           // Hide empty state while the create form is open on a blank day
           compose.type === "closed" ? EmptyDay : undefined
         }
-        renderItem={({ item }) => (
-          <ActivityCard
-            entry={item}
-            categoryName={getCategoryById(item.categoryId)?.name}
-            onEdit={() => openEdit(item)}
-          />
-        )}
+        // Editing row: show the form in that slot; other rows stay as cards
+        renderItem={({ item }) =>
+          compose.type === "edit" && compose.entryId === item.id ? (
+            composeForm("edit")
+          ) : (
+            <ActivityCard
+              entry={item}
+              categoryName={getCategoryById(item.categoryId)?.name}
+              onEdit={() => openEdit(item)}
+            />
+          )
+        }
+        // FlatList may not know the row height yet right after the form mounts
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            listRef.current?.scrollToIndex({
+              index: info.index,
+              animated: true,
+              viewPosition: 0,
+            });
+          }, 100);
+        }}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListFooterComponent={
           <Text style={styles.footer}>

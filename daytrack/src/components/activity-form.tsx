@@ -57,7 +57,7 @@ function nextHalfHour(from = nowTimeString()): string {
   return addMinutesToTime("00:00", rounded % (24 * 60));
 }
 
-/** Lavender "New activity" / "Edit activity" card from the mocks. */
+/** Create/edit activity card. Background matches the selected row color. */
 export function ActivityForm({
   date,
   categories,
@@ -77,6 +77,7 @@ export function ActivityForm({
   const [categoryId, setCategoryId] = useState<string | null>(
     initial?.categoryId ?? categories[0]?.id ?? null,
   );
+  // Defaults to lavender for new entries and editing uses the entry's color.
   const [rowColor, setRowColor] = useState<RowColor>(initial?.rowColor ?? "lavender");
   const [error, setError] = useState<string | null>(null);
 
@@ -110,7 +111,8 @@ export function ActivityForm({
   };
 
   return (
-    <View style={styles.card}>
+    // Match the background color of the ActivityCard while in edit mode.
+    <View style={[styles.card, { backgroundColor: colors.row[rowColor] }]}>
       <View style={styles.header}>
         <Text style={styles.title}>{initial ? "Edit activity" : "New activity"}</Text>
         <View style={styles.headerActions}>
@@ -326,7 +328,7 @@ function Chip({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surfaceLavender,
+    // backgroundColor set inline from colors.row[rowColor]
     borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.sm,
