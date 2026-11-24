@@ -1,24 +1,32 @@
 /**
- * In-memory app store for DayTrack.
+ * App store for DayTrack — React state backed by on-device SQLite.
  *
- * store.tsx is the app’s in-memory data layer. 
- * Holds categories and time entries in React state and exposes helpers to
- * read/update them from any screen via StoreProvider + useStore().
- * Data starts from seed.ts and currently resets when the app reloads
- * (no disk/cloud persistence yet).
+ * StoreProvider loads categories/entries from the database once, keeps them in
+ * memory for fast UI reads, and writes every create/update/delete through to
+ * SQLite so data survives app restarts.
  */
 
 import {
   createContext,
   use,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useSQLiteContext } from "expo-sqlite";
 
-import { createSeedEntries, seedCategories } from "@/data/seed";
+import {
+  deleteEntryRow,
+  insertCategory,
+  insertEntry,
+  loadAll,
+  updateEntryRow,
+} from "@/data/queries";
 import type { Category, Entry, DaySummary } from "@/types/models";
 import type { RowColor } from "@/theme";
+import { colors } from "@/theme";
 import { recentDateKeys, todayKey } from "@/utils/date";
 import { entryDurationMinutes } from "@/utils/time";
 
@@ -63,10 +71,36 @@ function summarizeDay(date: string, entries: Entry[]): DaySummary {
   };
 }
 
+/** Logs a failed disk write without blocking the UI update that already happened. */
+function persist(label: string, work: Promise<unknown>) {
+  void work.catch((error) => {
+    console.error(`[DayTrack] Failed to persist ${label}`, error);
+  });
+}
+
 /** Provides store state and actions to the React tree. Wrap the app root in this. */
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [categories, setCategories] = useState<Category[]>(seedCategories);
-  const [entries, setEntries] = useState<Entry[]>(() => createSeedEntries());
+  const db = useSQLiteContext();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [ready, setReady] = useState(false);
+
+  // Hydrate React state from SQLite after the provider finishes onInit.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const data = await loadAll(db);
+      if (cancelled) return;
+      setCategories(data.categories);
+      setEntries(data.entries);
+      setReady(true);
+    })().catch((error) => {
+      console.error("[DayTrack] Failed to load store from SQLite", error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [db]);
 
   const value = useMemo<StoreValue>(() => {
     /** Entries for one day, sorted by start time. */
@@ -86,7 +120,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const getCategoryById = (id: string | null) =>
       categories.find((category) => category.id === id);
 
-    /** Creates a new entry and adds it to state. */
+    /** Creates a new entry in memory and on disk. */
     const addEntry = (input: EntryInput) => {
       const now = new Date().toISOString();
       const entry: Entry = {
@@ -97,29 +131,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         updatedAt: now,
       };
       setEntries((current) => [...current, entry]);
+      persist("addEntry", insertEntry(db, entry));
       return entry;
     };
 
-    /** Replaces fields on an existing entry. */
+    /** Replaces fields on an existing entry in memory and on disk. */
     const updateEntry = (id: string, input: EntryInput) => {
-      const now = new Date().toISOString();
+      const existing = entries.find((entry) => entry.id === id);
+      if (!existing) return;
+      const updated: Entry = {
+        ...existing,
+        ...input,
+        description: input.description.trim(),
+        updatedAt: new Date().toISOString(),
+      };
       setEntries((current) =>
-        current.map((entry) =>
-          entry.id === id
-            ? {
-                ...entry,
-                ...input,
-                description: input.description.trim(),
-                updatedAt: now,
-              }
-            : entry,
-        ),
+        current.map((entry) => (entry.id === id ? updated : entry)),
       );
+      persist("updateEntry", updateEntryRow(db, updated));
     };
 
-    /** Removes an entry by id. */
+    /** Removes an entry by id from memory and disk. */
     const deleteEntry = (id: string) => {
       setEntries((current) => current.filter((entry) => entry.id !== id));
+      persist("deleteEntry", deleteEntryRow(db, id));
     };
 
     /** Adds a new category if the name is non-empty and not a duplicate. */
@@ -135,6 +170,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         name: trimmed,
       };
       setCategories((current) => [...current, category]);
+      persist("addCategory", insertCategory(db, category));
       return category;
     };
 
@@ -150,7 +186,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteEntry,
       addCategory,
     };
-  }, [categories, entries]);
+  }, [categories, entries, db]);
+
+  if (!ready) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator color={colors.ink} />
+      </View>
+    );
+  }
 
   return <StoreContext value={value}>{children}</StoreContext>;
 }
@@ -168,3 +212,12 @@ export function useStore() {
 export function useTodayKey() {
   return todayKey();
 }
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background,
+  },
+});

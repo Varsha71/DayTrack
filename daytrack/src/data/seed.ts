@@ -1,9 +1,9 @@
 /**
- * Mock data for DayTrack.
+ * First-run seed data for DayTrack.
  *
- * Used while the app has no local persistence yet, so Home and Day screens
- * open with sample categories and activity entries (matching the design mocks)
- * instead of empty lists. Entries are anchored to "today" and a few prior days.
+ * Written into SQLite once when the database is created (see database.ts).
+ * Later launches load whatever is already on disk — this file is not re-applied.
+ * Entries are anchored to "today" and a few prior days.
  */
 
 import type { Category, Entry } from "@/types/models";
